@@ -91,6 +91,9 @@ export default class Globe extends Mercator {
     }
 
     createInversionMatrix(tr: Transform, id: CanonicalTileID): Float32Array {
+        if (tr._globeMatrixCache[id.key]) {
+            return tr._globeMatrixCache[id.key];
+        }
         const {center} = tr;
         const matrix = mat4.identity(new Float64Array(16));
         const encode = globeNormalizeECEF(globeTileBounds(id));
@@ -98,7 +101,9 @@ export default class Globe extends Mercator {
         mat4.rotateY(matrix, matrix, degToRad(center.lng));
         mat4.rotateX(matrix, matrix, degToRad(center.lat));
         mat4.scale(matrix, matrix, [tr._pixelsPerMercatorPixel, tr._pixelsPerMercatorPixel, 1.0]);
-        return Float32Array.from(matrix);
+        const inversionMatrix = Float32Array.from(matrix);
+        tr._globeMatrixCache[id.key] = inversionMatrix;
+        return inversionMatrix;
     }
 
     pointCoordinate(tr: Transform, x: number, y: number, _: number): MercatorCoordinate {
