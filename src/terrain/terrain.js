@@ -396,6 +396,10 @@ export class Terrain extends Elevation {
         return this.enabled ? this.sourceCache : null;
     }
 
+    _isMockSource(): boolean {
+        return this.sourceCache === this._mockSourceCache;
+    }
+
     // Implements Elevation::exaggeration.
     exaggeration(): number {
         return this._exaggeration;
@@ -1423,9 +1427,6 @@ export class Terrain extends Elevation {
     }
 
     findDEMTileFor(tileID: OverscaledTileID): ?Tile {
-        if (this._mockSourceCache) {
-            return null;
-        }
         return this.enabled ? this._findTileCoveringTileID(tileID, this.sourceCache) : null;
     }
 
