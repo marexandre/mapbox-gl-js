@@ -83,6 +83,26 @@ class Ray {
             }
         }
     }
+
+    intersectSphere(center: Vec3, r: number, isect: Vec3): boolean {
+        const m = vec3.sub([], this.pos, center);
+        const b = vec3.dot(m, this.dir);
+        const c = vec3.dot(m, m) - r * r;
+
+        const discr = b * b - c;
+
+        if (discr < 0.0) {
+            return false;
+        }
+
+        const t0 = -b - Math.sqrt(discr);
+        const t1 = -b + Math.sqrt(discr);
+
+        const t = Math.min(Math.abs(t0), Math.abs(t1));
+        vec3.add(isect, this.pos, vec3.scale([], this.dir, t));
+
+        return true;
+    }
 }
 
 class FrustumCorners {
@@ -174,18 +194,19 @@ class Aabb {
     center: Vec3;
 
     static fromPoints(points: Array<Vec3>): Aabb {
-        const aabbMin = [Number.MAX_VALUE, Number.MAX_VALUE, Number.MAX_VALUE];
-        const aabbMax = [Number.MIN_VALUE, Number.MIN_VALUE, Number.MIN_VALUE];
-        for (const p of points) {
-            aabbMin[0] = Math.min(aabbMin[0], p[0]);
-            aabbMin[1] = Math.min(aabbMin[1], p[1]);
-            aabbMin[2] = Math.min(aabbMin[2], p[2]);
+        const min = [Infinity, Infinity, Infinity];
+        const max = [-Infinity, -Infinity, -Infinity];
 
-            aabbMax[0] = Math.max(aabbMax[0], p[0]);
-            aabbMax[1] = Math.max(aabbMax[1], p[1]);
-            aabbMax[2] = Math.max(aabbMax[2], p[2]);
+        for (const p of points) {
+            vec3.min(min, min, p);
+            vec3.max(max, max, p);
         }
-        return new Aabb(aabbMin, aabbMax);
+
+        return new Aabb(min, max);
+    }
+
+    clone(): Aabb {
+        return new Aabb(vec3.clone(this.min), vec3.clone(this.max));
     }
 
     constructor(min_: Vec3, max_: Vec3) {
@@ -205,6 +226,26 @@ class Aabb {
         // Temporarily, elevation is constant, hence quadrant.max.z = this.max.z
         qMax[2] = this.max[2];
         return new Aabb(qMin, qMax);
+    }
+
+    applyTransform(transform: mat4): Aabb {
+        const corners = this.getCorners();
+
+        for (let i = 0; i < corners.length; ++i) {
+            vec3.transformMat4(corners[i], corners[i], transform);
+        }
+
+        this.min = [Infinity, Infinity, Infinity];
+        this.max = [-Infinity, -Infinity, -Infinity];
+
+        for (const p of corners) {
+            vec3.min(this.min, this.min, p);
+            vec3.max(this.max, this.max, p);
+        }
+
+        this.center = vec3.scale([], vec3.add([], this.min, this.max), 0.5);
+
+        return this;
     }
 
     distanceX(point: Array<number>): number {
